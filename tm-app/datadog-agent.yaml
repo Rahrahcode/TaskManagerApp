@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: datadog-agent
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: datadog-agent
+  template:
+    metadata:
+      labels:
+        app: datadog-agent
+    spec:
+      containers:
+      - name: datadog-agent
+        image: datadog/agent:latest
+        env:
+          - name: DD_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: datadog-agent-auth
+                key: DD_API_KEY
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+              - SYS_PTRACE
+            drop:
+              - ALL
+        volumeMounts:
+          - name: datadog-proc
+            mountPath: /host/proc
+            readOnly: true
+          - name: datadog-socket
+            mountPath: /var/run/docker.sock
+          - name: dd-agent-auth
+            mountPath: /etc/datadog-agent/datadog.yaml
+            subPath: datadog.yaml
+      volumes:
+        - name: datadog-proc
+          hostPath:
+            path: /proc
+        - name: datadog-socket
+          hostPath:
+            path: /var/run/docker.sock
+        - name: dd-agent-auth
+          secret:
+            secretName: datadog-agent-auth
+
